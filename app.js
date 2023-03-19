@@ -1,59 +1,104 @@
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const express = require("express");
+const fs = require("fs");
 const app = express();
-const port = process.env.PORT || 3001;
+const port = 3000;
+const fileName = "./token.json";
 
-app.get("/", (req, res) => res.type('html').send(html));
+let stravadata;
+let data;
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+function startInterval() {
+  setInterval(async () => {
+    if (data.expires_at < Date.now() / 1000) {
+      await refreshToken().then(await getStrava());
+    }
+  }, 1000 * 60 * 5);
+}
 
+async function getStrava() {
+  await fetch(
+    "https://www.strava.com/api/v3/clubs/1118846/activities?access_token=" +
+      data.access_token
+  )
+    .then((res) => res.json())
+    .then((json) => {
+      stravadata = formatStravaData(json);
+    });
+}
 
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello from Render!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
-    </script>
-    <style>
-      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
-      @font-face {
-        font-family: "neo-sans";
-        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-        font-style: normal;
-        font-weight: 700;
+function formatStravaData(data) {
+  let res = [];
+  let indexes = {};
+  data.forEach((d) => {
+    if (
+      Object.keys(indexes).includes(
+        d.athlete.firstname + " " + d.athlete.lastname
+      )
+    ) {
+      res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total +=
+        Math.round(Number(d.distance));
+    } else {
+      indexes[d.athlete.firstname + " " + d.athlete.lastname] = res.length;
+      let athlete = {
+        firstname: d.athlete.firstname,
+        lastname: d.athlete.lastname,
+        total: 0,
+      };
+      res.push(athlete);
+      res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total =
+        Math.round(Number(d.distance));
+    }
+  });
+  return res;
+}
+
+async function refreshToken() {
+  return await fetch("https://www.strava.com/oauth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_id: data.client_id,
+      client_secret: data.client_secret,
+      refresh_token: data.refresh_token,
+      grant_type: "refresh_token",
+    }),
+  })
+    .then((res) => res.json())
+    .then((r) => {
+      console.log(r);
+      if (r.access_token) {
+        data.access_token = r.access_token;
+        data.refresh_token = r.refresh_token;
+        data.expires_at = r.expires_at;
       }
-      html {
-        font-family: neo-sans;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
-      }
-      body {
-        background: white;
-      }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
-      }
-    </style>
-  </head>
-  <body>
-    <section>
-      Hello from Render!
-    </section>
-  </body>
-</html>
-`
+      fs.writeFile(fileName, JSON.stringify(data), (err) => {
+        if (err) {
+          console.error(err);
+        }
+        console.log("wrote to file");
+      });
+      return data;
+    });
+}
+
+app.get("/", (req, res) => {
+  res.send(stravadata);
+});
+
+app.listen(port, () => {
+  fs.readFile(fileName, "utf8", async (err, jsonString) => {
+    if (err) {
+      console.log("File read failed:", err);
+      return;
+    }
+
+    data = JSON.parse(jsonString);
+    await refreshToken();
+    await getStrava();
+    startInterval();
+  });
+});
