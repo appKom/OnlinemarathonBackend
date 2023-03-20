@@ -1,5 +1,6 @@
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
@@ -9,8 +10,14 @@ let data = {};
 
 function startInterval() {
   setInterval(async () => {
+    try {
+      await getStrava();
+    } catch {
+      console.log("Error getting strava info");
+    }
     if (data.expires_at < Date.now() / 1000) {
-      await refreshToken().then(await getStrava());
+      await refreshToken().then();
+    } else {
     }
   }, 1000 * 60 * 5);
 }
@@ -78,7 +85,10 @@ async function refreshToken() {
         data.access_token = r.access_token;
         data.refresh_token = r.refresh_token;
         data.expires_at = r.expires_at;
+        console.log("REFRESHED TOKENS");
         logTokens();
+      } else {
+        console.log("FAILED TO REFRESH TOKENS");
       }
 
       return data;
@@ -93,10 +103,12 @@ app.listen(port, () => {
   data.access_token = process.env.ACCESS_TOKEN;
   data.refresh_token = process.env.REFRESH_TOKEN;
   data.expires_at = process.env.EXPIRES_AT;
+  data.client_secret = process.env.CLIENT_SECRET;
+  data.client_id = process.env.CLIENT_ID;
 
   refreshToken().then(getStrava()).then(startInterval());
 
-  console.log(`Port: http://localhost:${port}`);
+  console.log(`Port: ${port}`);
 
   logTokens();
 });
