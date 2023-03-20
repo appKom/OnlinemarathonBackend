@@ -1,13 +1,12 @@
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
+require("dotenv").config();
 const express = require("express");
-const fs = require("fs");
 const app = express();
 const port = process.env.PORT || 3000;
-const fileName = "./token.json";
 
 let stravadata;
-let data;
+let data = {};
 
 function startInterval() {
   setInterval(async () => {
@@ -54,6 +53,13 @@ function formatStravaData(data) {
   return res;
 }
 
+function logTokens() {
+  console.log("Access Token: " + data.access_token);
+  console.log("Refresh Token: " + data.refresh_token);
+  console.log("Expires At: " + data.expires_at);
+  console.log("------------");
+}
+
 async function refreshToken() {
   return await fetch("https://www.strava.com/oauth/token", {
     method: "POST",
@@ -69,18 +75,13 @@ async function refreshToken() {
   })
     .then((res) => res.json())
     .then((r) => {
-      console.log(r);
       if (r.access_token) {
         data.access_token = r.access_token;
         data.refresh_token = r.refresh_token;
         data.expires_at = r.expires_at;
+        logTokens();
       }
-      fs.writeFile(fileName, JSON.stringify(data), (err) => {
-        if (err) {
-          console.error(err);
-        }
-        console.log("wrote to file");
-      });
+
       return data;
     });
 }
@@ -90,15 +91,13 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  fs.readFile(fileName, "utf8", async (err, jsonString) => {
-    if (err) {
-      console.log("File read failed:", err);
-      return;
-    }
+  data.access_token = process.env.ACCESS_TOKEN;
+  data.refresh_token = process.env.REFRESH_TOKEN;
+  data.expires_at = process.env.EXPIRES_AT;
 
-    data = JSON.parse(jsonString);
-    await refreshToken();
-    await getStrava();
-    startInterval();
-  });
+  refreshToken().then(getStrava()).then(startInterval());
+
+  console.log(`Port: http://localhost:${port}`);
+
+  logTokens();
 });
