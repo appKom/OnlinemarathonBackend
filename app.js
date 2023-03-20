@@ -1,6 +1,6 @@
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
-require("dotenv").config();
+
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
