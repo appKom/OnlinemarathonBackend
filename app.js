@@ -37,15 +37,15 @@ function startInterval() {
       console.log("Error getting strava info");
     }
     if (data.expires_at < Date.now() / 1000) {
-      await refreshToken().then();
+      await refreshToken();
     } else {
     }
-  }, 1000 * 60 * 5);
+  }, 1000 * 60 * 2);
 }
 
 async function getStrava() {
   if (data.expires_at < Date.now() / 1000) {
-    await refreshToken().then();
+    await refreshToken();
   }
   await fetch(
     "https://www.strava.com/api/v3/clubs/1118846/activities?access_token=" +
@@ -54,6 +54,7 @@ async function getStrava() {
     .then((res) => res.json())
     .then((json) => {
       stravadata = formatStravaData(json);
+      lastFetched = Date.now();
     });
 }
 
@@ -96,15 +97,6 @@ function logTokens() {
 }
 
 async function refreshToken() {
-  console.log(
-    data.client_id +
-      " " +
-      data.client_secret +
-      " " +
-      data.refresh_token +
-      " " +
-      "refresh_token"
-  );
   return await fetch("https://www.strava.com/oauth/token", {
     method: "POST",
     headers: {
@@ -123,10 +115,11 @@ async function refreshToken() {
         data.access_token = r.access_token;
         data.refresh_token = r.refresh_token;
         data.expires_at = r.expires_at;
-
+        saveToFile(data);
         logTokens();
       } else {
         console.log("FAILED TO REFRESH TOKENS");
+        console.log("Current: " + data);
       }
 
       return data;
@@ -144,9 +137,8 @@ async function saveToFile(data) {
 }
 
 app.get("/", (req, res) => {
-  if (Date.now() - lastFetched > 1000 * 60) {
+  if (Date.now() - lastFetched > 1000 * 60 * 2) {
     getStrava().then(() => {
-      lastFetched = Date.now();
       res.send(stravadata);
     });
   } else {
