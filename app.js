@@ -41,6 +41,7 @@ async function getStrava() {
 function formatStravaData(data) {
   let res = [];
   let indexes = {};
+  console.log(data);
   try {
     data.forEach((d) => {
       if (
