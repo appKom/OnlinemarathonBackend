@@ -1,7 +1,12 @@
+try {
+  // Trengs på localhost, fungerer ikke på server (render)
+  require("dotenv").config();
+} catch {}
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const express = require("express");
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -36,26 +41,30 @@ async function getStrava() {
 function formatStravaData(data) {
   let res = [];
   let indexes = {};
-  data.forEach((d) => {
-    if (
-      Object.keys(indexes).includes(
-        d.athlete.firstname + " " + d.athlete.lastname
-      )
-    ) {
-      res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total +=
-        Math.round(Number(d.distance));
-    } else {
-      indexes[d.athlete.firstname + " " + d.athlete.lastname] = res.length;
-      let athlete = {
-        firstname: d.athlete.firstname,
-        lastname: d.athlete.lastname,
-        total: 0,
-      };
-      res.push(athlete);
-      res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total =
-        Math.round(Number(d.distance));
-    }
-  });
+  try {
+    data.forEach((d) => {
+      if (
+        Object.keys(indexes).includes(
+          d.athlete.firstname + " " + d.athlete.lastname
+        )
+      ) {
+        res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total +=
+          Math.round(Number(d.distance));
+      } else {
+        indexes[d.athlete.firstname + " " + d.athlete.lastname] = res.length;
+        let athlete = {
+          firstname: d.athlete.firstname,
+          lastname: d.athlete.lastname,
+          total: 0,
+        };
+        res.push(athlete);
+        res[indexes[d.athlete.firstname + " " + d.athlete.lastname]].total =
+          Math.round(Number(d.distance));
+      }
+    });
+  } catch {
+    console.log(data);
+  }
   return res;
 }
 
