@@ -153,7 +153,11 @@ app.listen(port, () => {
       return;
     }
     lastFetched = 0;
+
     result = JSON.parse(result);
+    console.log("\n\nResult from file:");
+    console.log(result);
+    console.log("-----------");
     if (result.access_token) {
       console.log("-----------\nGot secrets from file: ");
       console.log(result);
