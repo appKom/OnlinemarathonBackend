@@ -1,5 +1,3 @@
-import cors from "express";
-
 try {
   // Trengs på localhost, fungerer ikke på server (render)
   require("dotenv").config();
