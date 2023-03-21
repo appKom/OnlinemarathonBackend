@@ -9,7 +9,14 @@ const express = require("express");
 
 const app = express();
 const port = process.env.PORT || 3000;
+const cors=require("cors");
+const corsOptions ={
+   origin:'*', 
+   credentials:true,           
+   optionSuccessStatus:200,
+}
 
+app.use(cors(corsOptions)) 
 let stravadata;
 let data = {};
 
