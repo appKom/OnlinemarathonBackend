@@ -9,22 +9,15 @@ const fs = require("fs");
 const filename = "./token.json";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 let lastFetched;
 
-app.use(function (req, res, next) {
-  const allowedOrigins = ["http://localhost:3000"];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Credentials", true);
+app.options("/data", function (req, res) {
+  // Endre når frontend er oppe
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
   res.header("Access-Control-Allow-Methods", "GET");
-  next();
+  res.header("Access-Control-Allow-Headers", "*");
+  res.send();
 });
 let stravadata;
 let data = {};
@@ -136,7 +129,7 @@ async function saveToFile(data) {
   });
 }
 
-app.get("/", (req, res) => {
+app.get("/data", (req, res) => {
   if (Date.now() - lastFetched > 1000 * 60 * 2) {
     getStrava().then(() => {
       res.send(stravadata);
