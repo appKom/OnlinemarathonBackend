@@ -14,7 +14,7 @@ let lastFetched;
 
 app.options("/data", function (req, res) {
   // Endre når frontend er oppe
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET");
   res.header("Access-Control-Allow-Headers", "*");
   res.send();
