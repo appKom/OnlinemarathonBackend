@@ -5,20 +5,19 @@ try {
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const express = require("express");
+const cors = require("cors");
 const fs = require("fs");
 const filename = "./token.json";
 
 const app = express();
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+  })
+);
 const port = process.env.PORT || 5000;
 let lastFetched;
 
-app.options("/data", function (req, res) {
-  // Endre når frontend er oppe
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET");
-  res.header("Access-Control-Allow-Headers", "*");
-  res.send();
-});
 let stravadata;
 let data = {};
 
