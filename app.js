@@ -5,14 +5,17 @@ try {
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const express = require("express");
+var cors = require("cors");
 const cors = require("cors");
 const fs = require("fs");
+const { exitCode } = require("process");
 const filename = "./token.json";
 
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost"],
+    method: "GET",
   })
 );
 const port = process.env.PORT || 5000;
