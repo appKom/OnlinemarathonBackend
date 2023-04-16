@@ -1,28 +1,81 @@
-try {
-  // Trengs på localhost, fungerer ikke på server (render)
-  require("dotenv").config();
-} catch {}
+#!/usr/bin/env node
+
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const express = require("express");
-
+const mongoose = require("mongoose");
 const cors = require("cors");
-const fs = require("fs");
-const { exitCode } = require("process");
-const filename = "./token.json";
+
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
+mongoose.set("strictQuery", false);
+const port = process.env.PORT || 5000;
+const DBURL = process.env.DBURL;
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 const app = express();
+const TokensModel = require("./TokenModel");
+
 app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost"],
     method: "GET",
   })
 );
-const port = process.env.PORT || 5000;
-let lastFetched;
 
-let stravadata;
-let data = {};
+let tokens = {};
+let stravadata = {};
+
+app.get("/data", (req, res) => {
+  res.send(stravadata);
+});
+
+const start = async () => {
+  try {
+    await mongoose.connect(DBURL);
+    app.listen(port, async () => {
+      console.log(`Port: ${port}`);
+      setTokens(await getFromDB());
+
+      refreshToken().then(getStrava()).then(startInterval());
+    });
+  } catch (e) {
+    console.log(e.message);
+  }
+};
+
+function setTokens(data) {
+  tokens.access_token = data.access_token;
+  tokens.refresh_token = data.refresh_token;
+  tokens.expires_at = data.expires_at;
+}
+
+async function getFromDB() {
+  try {
+    let DBdata = await TokensModel.find().then((data) => data[0]);
+    return DBdata;
+  } catch (e) {
+    console.log(e.message);
+    return;
+  }
+}
+
+async function saveToDB(data) {
+  try {
+    await TokensModel.deleteMany({});
+    const newTokens = new TokensModel({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: data.expires_at,
+    });
+    await newTokens.save();
+  } catch (e) {
+    console.log(e.message);
+  }
+}
 
 function startInterval() {
   setInterval(async () => {
@@ -31,7 +84,7 @@ function startInterval() {
     } catch {
       console.log("Error getting strava info");
     }
-    if (data.expires_at < Date.now() / 1000) {
+    if (tokens.expires_at < Date.now() / 1000) {
       await refreshToken();
     } else {
     }
@@ -39,17 +92,16 @@ function startInterval() {
 }
 
 async function getStrava() {
-  if (data.expires_at < Date.now() / 1000) {
+  if (tokens.expires_at < Date.now() / 1000) {
     await refreshToken();
   }
   await fetch(
     "https://www.strava.com/api/v3/clubs/1118846/activities?access_token=" +
-      data.access_token
+      tokens.access_token
   )
     .then((res) => res.json())
     .then((json) => {
       stravadata = formatStravaData(json);
-      lastFetched = Date.now();
     });
 }
 
@@ -85,103 +137,42 @@ function formatStravaData(data) {
 }
 
 function logTokens() {
-  console.log("Access Token: " + data.access_token);
-  console.log("Refresh Token: " + data.refresh_token);
-  console.log("Expires At: " + data.expires_at);
+  console.log("------------");
+  console.log("       CURRENT TOKENS     ");
+  console.log("Access Token: " + tokens.access_token);
+  console.log("Refresh Token: " + tokens.refresh_token);
+  console.log("Expires At: " + tokens.expires_at);
   console.log("------------");
 }
 
 async function refreshToken() {
+  console.log(tokens.refresh_token);
   return await fetch("https://www.strava.com/oauth/token", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      client_id: data.client_id,
-      client_secret: data.client_secret,
-      refresh_token: data.refresh_token,
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      refresh_token: tokens.refresh_token,
       grant_type: "refresh_token",
     }),
   })
     .then((res) => res.json())
     .then((r) => {
       if (r.access_token) {
-        data.access_token = r.access_token;
-        data.refresh_token = r.refresh_token;
-        data.expires_at = r.expires_at;
-        saveToFile(data);
+        tokens.access_token = r.access_token;
+        tokens.refresh_token = r.refresh_token;
+        tokens.expires_at = r.expires_at;
+        saveToDB(tokens);
         logTokens();
       } else {
         console.log("FAILED TO REFRESH TOKENS");
-        console.log("Current: " + data);
+        console.log("Current: " + JSON.stringify(tokens));
       }
-
-      return data;
+      return tokens;
     });
 }
 
-async function saveToFile(data) {
-  fs.writeFile(filename, JSON.stringify(data), (err) => {
-    if (err) {
-      console.error(err);
-    } else {
-      console.log("Saved to file");
-    }
-  });
-}
-
-app.get("/data", (req, res) => {
-  if (Date.now() - lastFetched > 1000 * 60 * 2) {
-    getStrava().then(() => {
-      res.send(stravadata);
-    });
-  } else {
-    res.send(stravadata);
-  }
-});
-
-app.listen(port, () => {
-  fs.readFile(filename, "utf8", async (err, result) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    lastFetched = 0;
-
-    result = JSON.parse(result);
-    console.log("\n\nResult from file:");
-    console.log(result);
-    console.log("-----------");
-    if (result.access_token) {
-      console.log("-----------\nGot secrets from file: ");
-      console.log(result);
-      console.log("-----------");
-      data.access_token = result.access_token;
-      data.refresh_token = result.refresh_token;
-      data.expires_at = result.expires_at;
-      data.client_secret = result.client_secret;
-      data.client_id = result.client_id;
-    } else {
-      console.log("--------\nGot secrets from env: ");
-
-      console.log("Access:" + process.env.ACCESS_TOKEN);
-      console.log("Refresh: " + process.env.REFRESH_TOKEN);
-      console.log("Exp at:" + process.env.EXPIRES_AT);
-      console.log("Client id: " + process.env.CLIENT_ID);
-      console.log("Client secret" + process.env.CLIENT_SECRET);
-      console.log("-----------");
-      data.access_token = process.env.ACCESS_TOKEN;
-      data.refresh_token = process.env.REFRESH_TOKEN;
-      data.expires_at = process.env.EXPIRES_AT;
-      data.client_secret = process.env.CLIENT_SECRET;
-      data.client_id = process.env.CLIENT_ID;
-    }
-
-    saveToFile(data).then(
-      refreshToken().then(getStrava()).then(startInterval())
-    );
-  });
-
-  console.log(`Port: ${port}`);
-});
+start();
