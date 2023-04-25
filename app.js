@@ -18,6 +18,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 const app = express();
 const TokensModel = require("./TokenModel");
+let reqCount = 0;
 
 app.use(
   cors({
@@ -34,6 +35,8 @@ let tokens = {};
 let stravadata = {};
 
 app.get("/data", (req, res) => {
+  reqCount++;
+  console.log(reqCount);
   res.send(stravadata);
 });
 
