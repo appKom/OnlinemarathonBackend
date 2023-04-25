@@ -1,4 +1,6 @@
 # OnlineMaraton
+Kan enkelt hostes på render.com
+
 
 ### Setup
 * Set opp en mongoDB og lag en entry som følger TokenModel.js, med access_token, refresh_token og expires_at=0
@@ -17,10 +19,6 @@ DATABASE_URL=""
 
 ### Run
 Start med ` node app.js`
-
-
-
-
 
 ### Annen info
 * Formatert data fra strava hentes fra `GET /data` 

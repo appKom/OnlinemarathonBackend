@@ -21,7 +21,11 @@ const TokensModel = require("./TokenModel");
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost",
+      "https://online-maraton.vercel.app/",
+    ],
     method: "GET",
   })
 );
