@@ -24,7 +24,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost",
-      "https://online-maraton.vercel.app/",
+      "https://online-maraton.vercel.app",
     ],
     method: "GET",
   })
