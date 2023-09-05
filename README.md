@@ -15,6 +15,7 @@ Kan enkelt hostes på render.com
 CLIENT_SECRET=""
 CLIENT_ID=""
 DATABASE_URL=""
+CLUB_ID=""
 ```
 
 ### Run
