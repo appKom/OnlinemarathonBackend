@@ -11,10 +11,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 mongoose.set("strictQuery", false);
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 const DBURL = process.env.DBURL;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const CLUB_ID = process.env.CLUB_ID;
 
 const app = express();
 const TokensModel = require("./TokenModel");
@@ -35,8 +36,6 @@ let tokens = {};
 let stravadata = {};
 
 app.get("/data", (req, res) => {
-  reqCount++;
-  console.log(reqCount);
   res.send(stravadata);
 });
 
@@ -103,7 +102,7 @@ async function getStrava() {
     await refreshToken();
   }
   await fetch(
-    "https://www.strava.com/api/v3/clubs/1118846/activities?access_token=" +
+    "https://www.strava.com/api/v3/clubs/"+CLUB_ID+"/activities?access_token=" +
       tokens.access_token
   )
     .then((res) => res.json())
@@ -115,10 +114,15 @@ async function getStrava() {
 function formatStravaData(data) {
   let res = [];
   let indexes = {};
+
   console.log("Formatting data");
   try {
     data.forEach((d) => {
-      if (
+      // if d.name in lower case does not contain "online", skip
+      if (!d.name.toLowerCase().includes("online")) {
+        
+      }
+        else if (
         Object.keys(indexes).includes(
           d.athlete.firstname + " " + d.athlete.lastname
         )
