@@ -11,7 +11,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 mongoose.set("strictQuery", false);
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 const DBURL = process.env.DBURL;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
